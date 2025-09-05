@@ -67,7 +67,7 @@
           statusEl.textContent = 'Loading from Supabase…';
 
           const [signals, orders, positions, audits] = await Promise.all([
-            supabase.from('signals').select('*').order('updated_at', { ascending: false }).limit(100),
+            supabase.from('signals').select('*').eq('is_open', true).order('updated_at', { ascending: false }).limit(100),
             supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(100),
             supabase.from('positions').select('*').order('updated_at', { ascending: false }).limit(100),
             supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
@@ -78,9 +78,7 @@
           if (positions.error) throw positions.error;
           if (audits.error) throw audits.error;
 
-          // Filter out signals marked as Sold (case-insensitive)
-          const openSignals = (signals.data || []).filter(r => String(r.status || '').toLowerCase() !== 'sold');
-          fillTable('signals', openSignals, ['created_at','updated_at','asset','side','entry_price','target_price','stop_price','weight','status']);
+          fillTable('signals', signals.data, ['created_at','updated_at','asset','side','entry_price','target_price','stop_price','weight','status']);
           fillTable('orders', orders.data, ['created_at','asset','side','order_type','requested_qty','requested_amount_aud','requested_price','status','provider_order_id']);
           fillTable('positions', positions.data, ['updated_at','asset','qty','avg_entry_price','realized_pnl','unrealized_pnl','status']);
           fillTable('audits', audits.data, ['created_at','scope','action','ref_id','details']);
