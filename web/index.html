@@ -28,7 +28,7 @@
       <section>
         <h2>Signals (latest 100)</h2>
         <div class="table-wrap"><table id="signals"><thead><tr>
-          <th>Created</th><th>Updated</th><th>Asset</th><th>Side</th><th>Entry</th><th>Target</th><th>Stop</th><th>Weight</th><th>Status</th>
+          <th>Created</th><th>Updated</th><th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Entry</th><th>Target</th><th>Stop</th><th>Weight</th><th>Status</th>
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
@@ -78,7 +78,7 @@
           if (positions.error) throw positions.error;
           if (audits.error) throw audits.error;
 
-          fillTable('signals', signals.data, ['created_at','updated_at','asset','side','entry_price','target_price','stop_price','weight','status']);
+          fillTable('signals', signals.data, ['created_at','updated_at','asset','structure','type','side','entry_price','target_price','stop_price','weight','status']);
           fillTable('orders', orders.data, ['created_at','asset','side','order_type','requested_qty','requested_amount_aud','requested_price','status','provider_order_id']);
           fillTable('positions', positions.data, ['updated_at','asset','qty','avg_entry_price','realized_pnl','unrealized_pnl','status']);
           fillTable('audits', audits.data, ['created_at','scope','action','ref_id','details']);
