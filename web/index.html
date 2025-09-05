@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crypto Trade Dashboard</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; margin: 0; padding: 0; }
+      header { padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb; }
+      header h1 { font-size: 1.15rem; margin: 0; }
+      main { padding: 1rem; max-width: 1200px; margin: 0 auto; }
+      section { margin: 1.25rem 0; }
+      .table-wrap { overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+      table { border-collapse: collapse; width: 100%; font-size: 14px; }
+      th, td { padding: .5rem .6rem; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: top; }
+      thead th { position: sticky; top: 0; background: #fafafa; }
+      h2 { font-size: 1rem; margin: 0 0 .5rem; }
+      .muted { color: #6b7280; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Crypto Trade Dashboard</h1>
+      <div class="muted" id="status">Loading…</div>
+    </header>
+    <main>
+      <section>
+        <h2>Signals (latest 100)</h2>
+        <div class="table-wrap"><table id="signals"><thead><tr>
+          <th>Created</th><th>Updated</th><th>Asset</th><th>Side</th><th>Entry</th><th>Target</th><th>Stop</th><th>Weight</th><th>Status</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
+      <section>
+        <h2>Orders (latest 100)</h2>
+        <div class="table-wrap"><table id="orders"><thead><tr>
+          <th>Created</th><th>Asset</th><th>Side</th><th>Type</th><th>Qty</th><th>Amount (AUD)</th><th>Price</th><th>Status</th><th>Provider ID</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
+      <section>
+        <h2>Positions</h2>
+        <div class="table-wrap"><table id="positions"><thead><tr>
+          <th>Updated</th><th>Asset</th><th>Qty</th><th>Avg Entry</th><th>Realized PnL</th><th>Unrealized PnL</th><th>Status</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
+      <section>
+        <h2>Audit Logs (latest 100)</h2>
+        <div class="table-wrap"><table id="audits"><thead><tr>
+          <th>Time</th><th>Scope</th><th>Action</th><th>Ref</th><th>Details</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
+    </main>
+    <script type="module">
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+      // Public Supabase details (anon key is safe to expose for read-only)
+      const SUPABASE_URL = 'https://mvvcobptzmhpwbvcevmw.supabase.co';
+      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12dmNvYnB0em1ocHdidmNldm13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NTI2NjEsImV4cCI6MjA3MjUyODY2MX0.KGMgNERiDfJWVid_tCeTbB2ShwFys2TNX_FbxG73JPE';
+
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const statusEl = document.getElementById('status');
+      const fmt = (v) => v == null || v === '' ? '' : String(v);
+
+      async function load() {
+        try {
+          statusEl.textContent = 'Loading from Supabase…';
+
+          const [signals, orders, positions, audits] = await Promise.all([
+            supabase.from('signals').select('*').order('updated_at', { ascending: false }).limit(100),
+            supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(100),
+            supabase.from('positions').select('*').order('updated_at', { ascending: false }).limit(100),
+            supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
+          ]);
+
+          if (signals.error) throw signals.error;
+          if (orders.error) throw orders.error;
+          if (positions.error) throw positions.error;
+          if (audits.error) throw audits.error;
+
+          fillTable('signals', signals.data, ['created_at','updated_at','asset','side','entry_price','target_price','stop_price','weight','status']);
+          fillTable('orders', orders.data, ['created_at','asset','side','order_type','requested_qty','requested_amount_aud','requested_price','status','provider_order_id']);
+          fillTable('positions', positions.data, ['updated_at','asset','qty','avg_entry_price','realized_pnl','unrealized_pnl','status']);
+          fillTable('audits', audits.data, ['created_at','scope','action','ref_id','details']);
+
+          statusEl.textContent = 'Last updated: ' + new Date().toLocaleString();
+        } catch (e) {
+          statusEl.textContent = 'Error: ' + e;
+        }
+      }
+
+      function fillTable(id, rows, cols) {
+        const tbody = document.querySelector(`#${id} tbody`);
+        tbody.innerHTML = '';
+        if (!rows || rows.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 999; td.textContent = 'No data';
+          tr.appendChild(td); tbody.appendChild(tr); return;
+        }
+        for (const r of rows) {
+          const tr = document.createElement('tr');
+          for (const c of cols) {
+            const td = document.createElement('td');
+            let v = r[c];
+            if (typeof v === 'object' && v !== null) v = JSON.stringify(v);
+            td.textContent = fmt(v);
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+      }
+
+      load();
+      // refresh every 30s
+      setInterval(load, 30000);
+    </script>
+  </body>
+  </html>
+
+
