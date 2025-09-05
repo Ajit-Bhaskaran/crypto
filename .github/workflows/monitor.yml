@@ -1,0 +1,16 @@
+name: Sheets Monitor Hourly
+
+on:
+  schedule:
+    - cron: '0 * * * *' # every hour
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke sheets-monitor
+        run: |
+          curl -sS -X GET https://mvvcobptzmhpwbvcevmw.supabase.co/functions/v1/sheets-monitor \
+            --fail --max-time 60 --retry 3 --retry-delay 5 --retry-all-errors
+
