@@ -26,9 +26,22 @@
     </header>
     <main>
       <section>
+        <h2>Controls</h2>
+        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+          <label><input type="checkbox" id="showAll" /> Show all signals (ignore open-only filter)</label>
+          <label>Diff threshold % (entry vs current): <input id="diffPct" type="number" step="0.1" min="0" value="1" style="width:5rem;" /></label>
+        </div>
+      </section>
+      <section>
         <h2>Signals (latest 100)</h2>
         <div class="table-wrap"><table id="signals"><thead><tr>
           <th>Created</th><th>Updated</th><th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Conviction</th><th>Quantity</th><th>Entry</th><th>Target</th><th>Stop</th><th>Trade Size</th><th>Current Price</th><th>Current Value</th><th>Current PnL</th><th>PnL %</th><th>% Closed</th><th>Qty Open</th><th>Status</th>
+        </tr></thead><tbody></tbody></table></div>
+      </section>
+      <section>
+        <h2>Opportunities (within threshold)</h2>
+        <div class="table-wrap"><table id="opps"><thead><tr>
+          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Entry</th><th>Current</th><th>Diff %</th><th>Status</th>
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
@@ -61,13 +74,18 @@
 
       const statusEl = document.getElementById('status');
       const fmt = (v) => v == null || v === '' ? '' : String(v);
+      const showAllEl = document.getElementById('showAll');
+      const diffInput = document.getElementById('diffPct');
 
       async function load() {
         try {
           statusEl.textContent = 'Loading from Supabase…';
 
+          const signalsQuery = supabase.from('signals').select('*').order('updated_at', { ascending: false }).limit(100);
+          if (!showAllEl || !showAllEl.checked) signalsQuery.eq('is_open', true);
+
           const [signals, orders, positions, audits] = await Promise.all([
-            supabase.from('signals').select('*').eq('is_open', true).order('updated_at', { ascending: false }).limit(100),
+            signalsQuery,
             supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(100),
             supabase.from('positions').select('*').order('updated_at', { ascending: false }).limit(100),
             supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100),
@@ -86,6 +104,21 @@
           fillTable('orders', orders.data, ['created_at','asset','side','order_type','requested_qty','requested_amount_aud','requested_price','status','provider_order_id']);
           fillTable('positions', positions.data, ['updated_at','asset','qty','avg_entry_price','realized_pnl','unrealized_pnl','status']);
           fillTable('audits', audits.data, ['created_at','scope','action','ref_id','details']);
+
+          // Opportunities
+          const threshold = Math.abs(parseFloat(diffInput?.value)) || 1;
+          const sigs = signals.data || [];
+          const opps = sigs
+            .filter(r => (r.side || '').toUpperCase() === 'BUY')
+            .filter(r => (r.structure || '').toUpperCase() === 'SPOT' || !(r.structure || '').length)
+            .filter(r => r.entry_price != null && r.current_price != null)
+            .map(r => {
+              const diffPct = ((Number(r.entry_price) - Number(r.current_price)) / Number(r.entry_price)) * 100;
+              return { ...r, diff_pct: Number.isFinite(diffPct) ? diffPct : null };
+            })
+            .filter(r => r.diff_pct != null && Math.abs(r.diff_pct) <= threshold)
+            .sort((a,b) => Math.abs(a.diff_pct) - Math.abs(b.diff_pct));
+          fillTable('opps', opps, ['asset','structure','type','side','entry_price','current_price','diff_pct','status']);
 
           statusEl.textContent = 'Last updated: ' + new Date().toLocaleString();
         } catch (e) {
@@ -116,6 +149,8 @@
       }
 
       load();
+      document.getElementById('showAll')?.addEventListener('change', load);
+      document.getElementById('diffPct')?.addEventListener('change', load);
       // refresh every 30s
       setInterval(load, 30000);
     </script>
