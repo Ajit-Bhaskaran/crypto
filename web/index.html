@@ -81,7 +81,7 @@
         try {
           statusEl.textContent = 'Loading from Supabase…';
 
-          const signalsQuery = supabase.from('signals').select('*').order('updated_at', { ascending: false }).limit(100);
+          const signalsQuery = supabase.from('signals_latest').select('*').order('updated_at', { ascending: false }).limit(100);
           if (!showAllEl || !showAllEl.checked) signalsQuery.eq('is_open', true);
 
           const [signals, orders, positions, audits] = await Promise.all([
