@@ -81,7 +81,7 @@
         try {
           statusEl.textContent = 'Loading from Supabase…';
 
-          const signalsQuery = supabase.from('signals_latest').select('*').order('updated_at', { ascending: false }).limit(100);
+          const signalsQuery = supabase.from('signals').select('*').order('updated_at', { ascending: false }).limit(200);
           if (!showAllEl || !showAllEl.checked) signalsQuery.eq('is_open', true);
 
           const [signals, orders, positions, audits] = await Promise.all([
@@ -96,10 +96,19 @@
           if (positions.error) throw positions.error;
           if (audits.error) throw audits.error;
 
-          // Deduplicate on asset+structure+type (latest first from view)
+          // Filter: SPOT only, exclude Sold/Closed, require current_price present
+          const actionable = (signals.data || [])
+            .filter(r => (String(r.structure||'').trim().toUpperCase() === 'SPOT'))
+            .filter(r => {
+              const s = String(r.status||'').trim().toLowerCase();
+              return !(s.startsWith('sold') || s.startsWith('closed'));
+            })
+            .filter(r => r.current_price !== null && r.current_price !== undefined && String(r.current_price) !== '');
+
+          // Deduplicate on asset+structure+type (latest first from ordered list)
           const seen = new Set();
           const latestUnique = [];
-          for (const r of (signals.data || [])) {
+          for (const r of actionable) {
             const key = [String(r.asset||'').trim().toUpperCase(), String(r.structure||'').trim().toUpperCase(), String(r.type||'').trim().toUpperCase()].join('::');
             if (seen.has(key)) continue;
             seen.add(key);
@@ -117,7 +126,7 @@
 
           // Opportunities
           const threshold = Math.abs(parseFloat(diffInput?.value)) || 1;
-          const sigs = signals.data || [];
+          const sigs = latestUnique;
           const opps = sigs
             .filter(r => (r.side || '').toUpperCase() === 'BUY')
             .filter(r => (r.structure || '').toUpperCase() === 'SPOT' || !(r.structure || '').length)
