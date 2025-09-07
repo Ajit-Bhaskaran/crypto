@@ -35,13 +35,13 @@
       <section>
         <h2>Opportunities (within threshold)</h2>
         <div class="table-wrap"><table id="opps"><thead><tr>
-          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Entry</th><th>Current</th><th>Diff %</th><th>Status</th>
+          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Entry</th><th>Diff %</th><th>Status</th>
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
         <h2>Signals (latest per Asset/Structure/Type)</h2>
         <div class="table-wrap"><table id="signals"><thead><tr>
-          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Conviction</th><th>Quantity</th><th>Entry</th><th>Target</th><th>Stop</th><th>Trade Size</th><th>Current Price</th><th>Current Value</th><th>Current PnL</th><th>PnL %</th><th>% Closed</th><th>Qty Open</th><th>Status</th>
+          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Conviction</th><th>Quantity</th><th>Entry</th><th>Target</th><th>Stop</th><th>Trade Size</th><th>Current PnL</th><th>PnL %</th><th>% Closed</th><th>Qty Open</th><th>Status</th>
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
@@ -117,7 +117,7 @@
 
           fillTable('signals', latestUnique, [
             'asset','structure','type','side','conviction','quantity',
-            'entry_price','target_price','stop_price','weight','current_price','current_value',
+            'entry_price','target_price','stop_price','weight',
             'current_pnl','current_pnl_pct','percent_closed','quantity_open','status'
           ]);
           fillTable('orders', orders.data, ['created_at','asset','side','order_type','requested_qty','requested_amount_aud','requested_price','status','provider_order_id']);
@@ -137,7 +137,7 @@
             })
             .filter(r => r.diff_pct != null && Math.abs(r.diff_pct) <= threshold)
             .sort((a,b) => Math.abs(a.diff_pct) - Math.abs(b.diff_pct));
-          fillTable('opps', opps, ['asset','structure','type','side','entry_price','current_price','diff_pct','status']);
+          fillTable('opps', opps, ['asset','structure','type','side','entry_price','diff_pct','status']);
 
           statusEl.textContent = 'Last updated: ' + new Date().toLocaleString();
         } catch (e) {
