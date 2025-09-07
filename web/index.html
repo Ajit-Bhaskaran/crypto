@@ -39,9 +39,9 @@
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
-        <h2>Signals (latest 100)</h2>
+        <h2>Signals (latest per Asset/Structure/Type)</h2>
         <div class="table-wrap"><table id="signals"><thead><tr>
-          <th>Created</th><th>Updated</th><th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Conviction</th><th>Quantity</th><th>Entry</th><th>Target</th><th>Stop</th><th>Trade Size</th><th>Current Price</th><th>Current Value</th><th>Current PnL</th><th>PnL %</th><th>% Closed</th><th>Qty Open</th><th>Status</th>
+          <th>Asset</th><th>Structure</th><th>Type</th><th>Side</th><th>Conviction</th><th>Quantity</th><th>Entry</th><th>Target</th><th>Stop</th><th>Trade Size</th><th>Current Price</th><th>Current Value</th><th>Current PnL</th><th>PnL %</th><th>% Closed</th><th>Qty Open</th><th>Status</th>
         </tr></thead><tbody></tbody></table></div>
       </section>
       <section>
@@ -96,8 +96,18 @@
           if (positions.error) throw positions.error;
           if (audits.error) throw audits.error;
 
-          fillTable('signals', signals.data, [
-            'created_at','updated_at','asset','structure','type','side','conviction','quantity',
+          // Deduplicate on asset+structure+type (latest first from view)
+          const seen = new Set();
+          const latestUnique = [];
+          for (const r of (signals.data || [])) {
+            const key = [String(r.asset||'').trim().toUpperCase(), String(r.structure||'').trim().toUpperCase(), String(r.type||'').trim().toUpperCase()].join('::');
+            if (seen.has(key)) continue;
+            seen.add(key);
+            latestUnique.push(r);
+          }
+
+          fillTable('signals', latestUnique, [
+            'asset','structure','type','side','conviction','quantity',
             'entry_price','target_price','stop_price','weight','current_price','current_value',
             'current_pnl','current_pnl_pct','percent_closed','quantity_open','status'
           ]);
